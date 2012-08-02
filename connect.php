@@ -6,7 +6,7 @@
         exit;
     }
 
-    echo 'Connected to mysql on ' . DB_HOST . "\n";
+    //echo 'Connected to mysql on ' . DB_HOST . "\n";
 
     if (!mysql_select_db(DB_NAME, $dbconn)) {
         echo 'Could not use database ' . DB_NAME . "\n";
@@ -14,5 +14,5 @@
         exit;
     }
 
-    echo 'Connected to database ' . DB_NAME . "\n";
+    //echo 'Connected to database ' . DB_NAME . "\n";
 ?>
