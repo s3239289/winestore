@@ -13,15 +13,6 @@
         }
     }
 
-    $db = new PDO(
-            "mysql:host=".DB_HOST.
-            ";port=".DB_PORT.
-            ";dbname=".DB_NAME,
-            DB_USER,
-            DB_PW
-          );
-   //$db = dbConnect($db);
-
     $smarty = new Smarty();
     $smarty->template_dir = USER_HOME_DIR . "/php/Smarty-Work-Dir/templates";
     $smarty->compile_dir = USER_HOME_DIR . "/php/Smarty-Work-Dir/templates_c";
@@ -164,35 +155,15 @@
                 wine_id
     ";
 
-    $results = Array();
-
-       //$sql = "SELECT wine_name, variety, year, winery_name, region_name, on_hand, cost, sum(qty) as total_qty, cost * sum(qty) as revenue FROM wine INNER JOIN winery USING (winery_id) INNER JOIN region USING (region_id) INNER JOIN wine_variety USING (wine_id) INNER JOIN grape_variety USING (variety_id) INNER JOIN inventory USING (wine_id) INNER JOIN items USING (wine_id) wine_name LIKE '%Archibald%' GROUP BY year, variety ORDER BY wine_id";
-    
-        $query = $db->prepare($sql);
-        $query->execute();
-
-        foreach ($query->fetchAll() as $row) {
-            $results[] = $row;
-            //foreach ($row as $field) {
-                
-                //$tableName = $row[$field];
-                //echo $field;
-            //echo "<option value=\"$tableName\">$tableName</option>";
-        }
-            //$tableName = $row[0];
-            //echo "<option value=\"$tableName\">$tableName</option>";
-            ////$results[] = $row;
-        //}
-
     //MySQL errors
     //http://stackoverflow.com/questions/6059589/warning-mysql-num-rows-supplied-argument-is-not-a-valid-mysql-result-resourc
     //something strange here
-    //$result = mysql_query($sql) or die(mysql_error());
+    $result = mysql_query($sql) or die(mysql_error());
 
     //Notes on how to use Smarty: http://www.smarty.net/forums/viewtopic.php?t=9199
-    //$results = Array();
-    //while ($row = mysql_fetch_assoc($result))
-           //$results[] = $row;
+    $results = Array();
+    while ($row = mysql_fetch_assoc($result))
+           $results[] = $row;
 
     $smarty->assign('num_rows', count($results));
     $smarty->assign('sql', $sql);
