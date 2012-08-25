@@ -1,6 +1,32 @@
 <?php
+    // /usr/local/stow/php-5.2.5/pkg/php-5.2.5/bin/php-cgi -f answer.php wine_name=Archibald
+    define("USER_HOME_DIR", "/home/stud/s3239289"); // CHANGE HERE
+    define("USER_HOME_DIR", "/home/stud/s3239289"); // CHANGE HERE
+
+    require(USER_HOME_DIR . "/php/Smarty-3.1.11/libs/Smarty.class.php");
     require_once('db.php');
     require_once('connect.php');
+
+    function simpleCheck($input) {
+        if (!is_numeric($input)) {
+            die('A required numeric value was not numeric');
+        }
+    }
+
+    $db = new PDO(
+            "mysql:host=".DB_HOST.
+            ";port=".DB_PORT.
+            ";dbname=".DB_NAME,
+            DB_USER,
+            DB_PW
+          );
+   //$db = dbConnect($db);
+
+    $smarty = new Smarty();
+    $smarty->template_dir = USER_HOME_DIR . "/php/Smarty-Work-Dir/templates";
+    $smarty->compile_dir = USER_HOME_DIR . "/php/Smarty-Work-Dir/templates_c";
+    $smarty->cache_dir = USER_HOME_DIR . "/php/Smarty-Work-Dir/cache";
+    $smarty->config_dir = USER_HOME_DIR . "/php/Smarty-Work-Dir/configs";
 
     $wine_name = $_GET['wine_name'];
     $winery_name = $_GET['winery_name'];
@@ -9,21 +35,9 @@
     $year_low = (int) $_GET['year_low'];
     $year_high = (int) $_GET['year_high'];
     $min_stock = (int) $_GET['min_stock'];
-    $max_stock = (int) $_GET['max_stock'];
+    $min_order = (int) $_GET['min_order'];
     $cost_min = (int) $_GET['cost_min'];
     $cost_max = (int) $_GET['cost_max'];
-
-    $wineNameSQL = sprintf("SELECT * winestore.wine WHERE wine_name LIKE '%%%s%%'",
-        mysql_real_escape_string($wine_name));
-    $wineryNameSQL = sprintf("SELECT * winestore.winery WHERE winery_name LIKE '%%%s%%'",
-        mysql_real_escape_string($winery_name));
-    $regionSQL = sprintf("SELECT * winestore.region WHERE region_name LIKE '%%%s%%'",
-        mysql_real_escape_string($region));
-    $grapeVarietySQL = sprintf("SELECT * winestore.region WHERE variety LIKE '%%%s%%'",
-        mysql_real_escape_string($grape_variety));
-    $yearRangeSQL = sprintf("SELECT * winestore.wine where year between %d AND %d",
-        mysql_real_escape_string(year_low),
-        mysql_real_escape_string(year_high));
 
     /*
      * Reference for INNER JOIN: 
@@ -32,9 +46,172 @@
      * Test for correctness:
      *     SELECT SUM(qty) FROM winestore.items where wine_id=888;
      */
-    $minStockSQL = "SELECT a.wine_id, SUM(a.qty) FROM winestore.items a inner join wine b on b.wine_id = a.wine_id group by wine_id";
-    $minOrderSQL = "SELECT winestore.orders WHERE variety = '".$input."'";
-        $costRangeSQL = "";
+    //$minStockSQL = "SELECT a.wine_id, SUM(a.qty) FROM winestore.items a INNER JOIN wine b on b.wine_id = a.wine_id group by wine_id";
+    //$minOrderSQL = "SELECT winestore.orders WHERE variety = '".$input."'";
+        //$costRangeSQL = "";
 
-    //SELECT a.wine_id, SUM(a.qty) FROM winestore.items a inner join orders b on b.order_id = a.order_id group by wine_id;
+                   //count(order_id) as total_orders,
+    $sql = "
+            SELECT 
+                wine_id,
+                wine_name,
+                variety,
+                year,
+                winery_name,
+                region_name,
+                on_hand,
+                cost,
+                sum(qty) AS total_qty,
+                cost * sum(qty) AS revenue 
+            FROM wine 
+                INNER JOIN winery 
+                   USING (winery_id) 
+                INNER JOIN region 
+                   USING (region_id) 
+                INNER JOIN wine_variety 
+                   USING (wine_id) 
+                INNER JOIN grape_variety 
+                   USING (variety_id) 
+                INNER JOIN inventory 
+                   USING (wine_id) 
+                INNER JOIN items 
+                   USING (wine_id)";
+
+    $vars = array(
+                $wine_name,
+                $winery_name,
+                $region,
+                $grape_variety,
+                $year_low,
+                $year_high,
+                $cost_min,
+                $cost_max,
+                $min_stock,
+                $min_order,
+            );
+
+    //var_dump($vars);
+    $where = 0;
+
+    //something strange here
+    //if (!empty($_GET)) {
+        //$sql .= " WHERE ";
+        //$where = 1;
+    //}
+
+    foreach ($vars as $var) {
+        if (!empty($var)) {
+        $sql .= "
+            WHERE
+                ";
+            $where = 1;
+            break;
+        }
+    }
+
+    if (!empty($wine_name))
+        $sql .= "wine_name LIKE '%".$wine_name."%' AND ";
+    if (!empty($winery_name))
+        $sql .= "winery_name LIKE '%".$winery_name."%' AND ";
+    if (!empty($region))
+        $sql .= "region_name = '".$region."' AND ";
+    if (!empty($grape_variety))
+        $sql .= "variety = '".$grape_variety."' AND ";
+    if (!empty($year_low)) {
+        simpleCheck($year_low);
+        $sql .= "year >= '".$year_low."' AND ";
+    }
+    if (!empty($year_high)) {
+        simpleCheck($year_high);
+        $sql .= "year <= '".$year_high."' AND ";
+    }
+    if (!empty($cost_min)) {
+        simpleCheck($cost_min);
+        $sql .= "cost >= '".$cost_min."' AND ";
+    }
+    if (!empty($cost_max)) {
+        simpleCheck($cost_max);
+        $sql .= "cost <= '".$cost_max."' AND ";
+    }
+    if (!empty($min_stock)) {
+        simpleCheck($min_stock);
+        $sql .= "on_hand = '".$min_stock."' AND ";
+    }
+    if (!empty($min_order)) {
+        simpleCheck($min_order);
+        $sql .= "total_qty = '".$min_order."'";
+    }
+
+    if ($year_low > $year_high && !empty($year_high)) {
+        die('Year max cannot be smaller than year min');
+    }
+    if ($cost_min > $cost_max && !empty($cost_max)) {
+        die('Cost max cannot be smaller than cost min');
+    }
+
+    //Trim the trailing AND if it exists
+    if ($where != 0) {
+        $len = strrpos($sql, " AND ", 0);
+        $sql = substr($sql, 0, $len);
+    }
+    $sql .= "
+            GROUP BY
+                wine_id,
+                wine_name,
+                variety,
+                year
+            ORDER BY
+                wine_id
+    ";
+
+    $results = Array();
+
+       //$sql = "SELECT wine_name, variety, year, winery_name, region_name, on_hand, cost, sum(qty) as total_qty, cost * sum(qty) as revenue FROM wine INNER JOIN winery USING (winery_id) INNER JOIN region USING (region_id) INNER JOIN wine_variety USING (wine_id) INNER JOIN grape_variety USING (variety_id) INNER JOIN inventory USING (wine_id) INNER JOIN items USING (wine_id) wine_name LIKE '%Archibald%' GROUP BY year, variety ORDER BY wine_id";
+    
+        $query = $db->prepare($sql);
+        $query->execute();
+
+        foreach ($query->fetchAll() as $row) {
+            $results[] = $row;
+            //foreach ($row as $field) {
+                
+                //$tableName = $row[$field];
+                //echo $field;
+            //echo "<option value=\"$tableName\">$tableName</option>";
+        }
+            //$tableName = $row[0];
+            //echo "<option value=\"$tableName\">$tableName</option>";
+            ////$results[] = $row;
+        //}
+
+    //MySQL errors
+    //http://stackoverflow.com/questions/6059589/warning-mysql-num-rows-supplied-argument-is-not-a-valid-mysql-result-resourc
+    //something strange here
+    //$result = mysql_query($sql) or die(mysql_error());
+
+    //Notes on how to use Smarty: http://www.smarty.net/forums/viewtopic.php?t=9199
+    //$results = Array();
+    //while ($row = mysql_fetch_assoc($result))
+           //$results[] = $row;
+
+    $smarty->assign('num_rows', count($results));
+    $smarty->assign('sql', $sql);
+    $smarty->assign('result', $results);
+
+    //echo "SQL query ($sql) returned ".mysql_num_rows($result)." records<p />";
+
+        //while($row = mysql_fetch_row($result)) {
+            //$len = count($row);
+            //echo "<tr>";
+            //for ($i = 0; $i < $len; $i++) {
+                //echo "<td>$row[$i]</td>";
+            //}
+            //echo "</tr>";
+            ////$tableName = $row[0];
+            ////echo $row
+        //}
+
+    $smarty->display('answer.tpl');
+
+    $db = null; // close the database connection
 ?>
