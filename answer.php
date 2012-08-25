@@ -1,5 +1,8 @@
 <?php
     // /usr/local/stow/php-5.2.5/pkg/php-5.2.5/bin/php-cgi -f answer.php wine_name=Archibald
+
+    session_start();
+
     define("USER_HOME_DIR", "/home/stud/s3239289"); // CHANGE HERE
     define("USER_HOME_DIR", "/home/stud/s3239289"); // CHANGE HERE
 
@@ -20,7 +23,6 @@
             DB_USER,
             DB_PW
           );
-   //$db = dbConnect($db);
 
     $smarty = new Smarty();
     $smarty->template_dir = USER_HOME_DIR . "/php/Smarty-Work-Dir/templates";
@@ -39,6 +41,10 @@
     $cost_min = (int) $_GET['cost_min'];
     $cost_max = (int) $_GET['cost_max'];
 
+    if ($_GET['session'] == "destroy") {
+        session_destroy();
+    }
+
     /*
      * Reference for INNER JOIN: 
      *     http://stackoverflow.com/questions/6411202/inner-join-with-sum-aggregate-function-in-sql-server
@@ -46,11 +52,7 @@
      * Test for correctness:
      *     SELECT SUM(qty) FROM winestore.items where wine_id=888;
      */
-    //$minStockSQL = "SELECT a.wine_id, SUM(a.qty) FROM winestore.items a INNER JOIN wine b on b.wine_id = a.wine_id group by wine_id";
-    //$minOrderSQL = "SELECT winestore.orders WHERE variety = '".$input."'";
-        //$costRangeSQL = "";
 
-                   //count(order_id) as total_orders,
     $sql = "
             SELECT 
                 wine_id,
@@ -166,50 +168,25 @@
 
     $results = Array();
 
-       //$sql = "SELECT wine_name, variety, year, winery_name, region_name, on_hand, cost, sum(qty) as total_qty, cost * sum(qty) as revenue FROM wine INNER JOIN winery USING (winery_id) INNER JOIN region USING (region_id) INNER JOIN wine_variety USING (wine_id) INNER JOIN grape_variety USING (variety_id) INNER JOIN inventory USING (wine_id) INNER JOIN items USING (wine_id) wine_name LIKE '%Archibald%' GROUP BY year, variety ORDER BY wine_id";
-    
-        $query = $db->prepare($sql);
-        $query->execute();
+    $query = $db->prepare($sql);
+    $query->execute();
 
-        foreach ($query->fetchAll() as $row) {
-            $results[] = $row;
-            //foreach ($row as $field) {
-                
-                //$tableName = $row[$field];
-                //echo $field;
-            //echo "<option value=\"$tableName\">$tableName</option>";
+    foreach ($query->fetchAll() as $row) {
+        $results[] = $row;
+
+        if (session_id()) {
+            $_SESSION['wines'][] = $row;
         }
-            //$tableName = $row[0];
-            //echo "<option value=\"$tableName\">$tableName</option>";
-            ////$results[] = $row;
-        //}
+    }
 
     //MySQL errors
     //http://stackoverflow.com/questions/6059589/warning-mysql-num-rows-supplied-argument-is-not-a-valid-mysql-result-resourc
-    //something strange here
-    //$result = mysql_query($sql) or die(mysql_error());
 
     //Notes on how to use Smarty: http://www.smarty.net/forums/viewtopic.php?t=9199
-    //$results = Array();
-    //while ($row = mysql_fetch_assoc($result))
-           //$results[] = $row;
-
     $smarty->assign('num_rows', count($results));
     $smarty->assign('sql', $sql);
+    $smarty->assign('session', $_SESSION['wines']);
     $smarty->assign('result', $results);
-
-    //echo "SQL query ($sql) returned ".mysql_num_rows($result)." records<p />";
-
-        //while($row = mysql_fetch_row($result)) {
-            //$len = count($row);
-            //echo "<tr>";
-            //for ($i = 0; $i < $len; $i++) {
-                //echo "<td>$row[$i]</td>";
-            //}
-            //echo "</tr>";
-            ////$tableName = $row[0];
-            ////echo $row
-        //}
 
     $smarty->display('answer.tpl');
 

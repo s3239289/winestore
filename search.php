@@ -1,4 +1,8 @@
 <?php
+    if (isset($_GET['session'])) {
+        session_start();
+    }
+
     require_once('db.php');
     require_once('connect.php');
     require_once('config.php');
@@ -19,7 +23,19 @@
     </head>
     <body>
         <h1>Winestore Database</h1>
+
+        <hr>
+        <a href="search.php?session=true">Start Session</a>
+
         <form name="form" action="answer.php" method="GET" accept-charset="utf-8">
+            <?php
+                if ($_GET['session'] == "true") {
+                    echo '<input type="hidden" name="session" value="true" />';
+                }
+                else {
+                    echo '<input type="hidden" name="session" value="false" />';
+                }
+            ?>
             Wine Name: <input type="text" name="wine_name" /><br />
             Winery Name: <input type="text" name="winery_name" /><br />
             Region: <select name="region">
